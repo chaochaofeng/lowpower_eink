@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="data:;base64,=">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>配置页面</title> 
+    <style>
+    body {
+        background: #394E5E;
+        display: flex;
+        justify-content: center;
+        margin-top:10%
+    }
+    .login {
+        background-color: #0b132b;
+        width: 400px;
+        color: #f8f9fa;
+        padding: 40px;
+        text-align: center;
+    }
+    .login input {
+        display: block;
+        margin: 20px auto;
+        text-align: center;
+        background: none;
+        padding: 12px;
+        font-size: 15px;
+        border-radius: 22px;
+        color: #f8f9fa;
+    }
+    .login input[type="text"],
+    .login input[type="password"] {
+        border: 2px solid #3498db;
+        width: 220px;
+    }
+    .login input[type="submit"] {
+        width：150px;
+        border: 2px solid #2ecc71;
+
+    }
+    </style>
+</head>
+<body>
+    <form name='input' action='/configwifi' method='POST' action="action.js" class="login">
+        <h1>WiFi配置</h1>
+        <input type="text" name="ssid" placeholder="请输入WiFi名称" list = "data-list"/>
+            <datalist id = "data-list">

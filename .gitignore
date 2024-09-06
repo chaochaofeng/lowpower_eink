@@ -1,0 +1,40 @@
+.config
+*.o
+*.pyc
+
+
+# emacs temp file suffixes
+*~
+.#*
+\#*#
+
+# eclipse setting
+.settings
+
+# cache dir
+.cache/
+
+# Components Unit Test Apps files
+components/**/build/
+components/**/build_*_*/
+components/**/sdkconfig
+components/**/sdkconfig.old
+
+# VS Code Settings
+.vscode/
+si/
+
+# VIM files
+*.swp
+*.swo
+
+# Sublime Text files
+*.sublime-project
+*.sublime-workspace
+
+# Clion IDE CMake build & config
+.idea/
+cmake-build-*/
+
+# ESP-IDF default build directory name
+build
