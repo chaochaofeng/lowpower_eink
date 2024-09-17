@@ -10,7 +10,7 @@
 #include "battery.h"
 
 #define 	BATTERY_CHANGE	    3
-#define 	ADC_BATTERY_EN		1
+#define 	ADC_BATTERY_EN		13
 #define     ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_TP
 
 #define     ADC_BATTERY_ATTEN           ADC_ATTEN_DB_12
