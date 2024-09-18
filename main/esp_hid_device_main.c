@@ -49,8 +49,6 @@ static void display_bg_char(int x, int y, int inv_x, int inv_y, int r,
     box_w = u8g2_GetMaxCharWidth(&u8g2) * char_num_max + inv_x * 2;
     box_h = u8g2_GetMaxCharHeight(&u8g2) + inv_y * 2;
 
-    printf("box w:%d h:%d str w:%d h:%d\n", box_w, box_h, u8g2_GetMaxCharWidth(&u8g2), u8g2_GetMaxCharHeight(&u8g2));
-
 	u8g2_DrawRBox(&u8g2, box_x, box_y, box_w, box_h, r);
 
     u8g2_SetFontMode(&u8g2, 1);
@@ -76,6 +74,77 @@ static void display_time(int hour, int min)
     display_bg_char(20 + 118 + 20, 30, 5, 10, 8, montmedium_font_82x, buf, 2);
 }
 
+static void display_temp_hum(int temp, int humi)
+{
+    char buf[6];
+    memset(buf, 0, sizeof(buf));
+
+    u8g2_SetFontMode(&u8g2, 0);
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    sprintf(buf, "%d\xc2\xb0""C", temp);
+
+    u8g2_SetFont(&u8g2, u8g2_font_logisoso24_tf);
+    u8g2_DrawUTF8(&u8g2, 15, 145, buf);
+
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", humi);
+
+    u8g2_DrawUTF8(&u8g2, 110, 145, buf);
+
+    u8g2_SetFont(&u8g2, myicon_font24);
+    u8g2_DrawGlyph(&u8g2, 78, 150, 17);
+}
+
+static void display_date(int mon, int day)
+{
+    char buf[6];
+
+    u8g2_SetFontMode(&u8g2, 0);
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    sprintf(buf, "%02d-%02d", mon, day);
+
+    u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
+    u8g2_DrawUTF8(&u8g2, 180, 145, buf);
+}
+
+static void display_battery(int voltage, int charge)
+{
+    int encoder = 10;
+    int start_x = 277;
+    int inv_x   = 24;
+    int cnt = 0;
+
+    u8g2_SetFontMode(&u8g2, 0);
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    u8g2_SetFont(&u8g2, myicon_font24);
+
+    if (charge)
+        u8g2_DrawGlyph(&u8g2, 277, 26, 16);
+
+    cnt++;
+
+    if (voltage < 20)
+        encoder += 0;
+    else if (voltage < 35)
+        encoder += 1;
+    else if (voltage < 55)
+        encoder += 2;
+    else if (voltage < 70)
+        encoder += 3;
+    else if (voltage < 85)
+        encoder += 4;
+    else
+        encoder += 5;
+
+    u8g2_DrawGlyph(&u8g2, start_x - cnt * inv_x + 6, 26, encoder);
+    cnt++;
+
+    u8g2_DrawGlyph(&u8g2, start_x - cnt * inv_x, 26, 19);
+}
+
 void app_main(void)
 {
     esp_err_t ret = 0;
@@ -85,10 +154,6 @@ void app_main(void)
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
     }
-
-    //lvgl_spi_epd_init();
-    //lv_port_indev_init();
-    //ui_init();
 
     sntp_Init();
 
@@ -104,30 +169,17 @@ void app_main(void)
     while (1) {
         ret = xSemaphoreTake(sn_time.sem, portMAX_DELAY);
         if (ret == pdTRUE) {
-            
+            u8g2_ClearBuffer(&u8g2);
+
             display_time(sn_time.hour, sn_time.min);
 
+            display_date(sn_time.mon, sn_time.day);
+
+            display_temp_hum(aht_data.temperature, aht_data.humidity);
+
+            display_battery(batteryinfo.voltage, batteryinfo.charging);
+
             u8g2_NextPage(&u8g2);
-#if 0
-            lv_label_set_text_fmt(ui_hour, "%d", sn_time.hour);
-            lv_label_set_text_fmt(ui_min, "%02d", sn_time.min);
-            lv_label_set_text_fmt(ui_dataLabel, "%02d-%02d", sn_time.mon, sn_time.day);
-
-            if (wificon.is_connected) {
-                lv_obj_clear_flag(ui_wifi, LV_OBJ_FLAG_HIDDEN);
-            } else {
-                lv_obj_add_flag(ui_wifi, LV_OBJ_FLAG_HIDDEN);
-            }
-
-            if (batteryinfo.status) {
-                battery_ui_update(batteryinfo.voltage,
-                    batteryinfo.battery_exist, batteryinfo.charging);
-            }
-
-            if (aht_data.status) {
-                aht20_update_ui(aht_data.temperature, aht_data.humidity);
-            }
-#endif
         }
 
         vTaskDelay(200 / portTICK_PERIOD_MS);
