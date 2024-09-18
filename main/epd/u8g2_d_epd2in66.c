@@ -86,7 +86,8 @@ uint8_t u8x8_epd2in66drv_alloc(u8x8_epd2in66drv_t *fb)
 void u8x8_epd2in66drv_DrawTiles(u8x8_epd2in66drv_t *fb, uint16_t tx, uint16_t ty, uint8_t tile_cnt, uint8_t *tile_ptr)
 {
 	uint8_t byte;
-	memset(fb->u8x8_buf,0x00,8*tile_cnt);
+
+	memset(fb->u8x8_buf, 0x00, 8*tile_cnt);
 
 	for(int i=0; i < tile_cnt * 8; i++){
 		byte = *tile_ptr++;
@@ -96,22 +97,25 @@ void u8x8_epd2in66drv_DrawTiles(u8x8_epd2in66drv_t *fb, uint16_t tx, uint16_t ty
 		}
 	}
 
-    uint32_t pixel;
-    uint32_t *fbp32 = (uint32_t *)fb->fbp;
-    long int location = 0;
+	uint8_t *fbp = (uint8_t *)fb->fbp;
 
     uint16_t byte_index;
     uint16_t bit_index;
+    uint16_t _x;
+    uint16_t _y;
 
     for(int y=0; y<8;y++){
-        for(int x=0; x<8*tile_cnt;x++){
-            byte_index = (((ty*8)+y) * fb->width + x) >> 3;
-            bit_index  = x & 0x7;
+        for(int x=0; x<8*tile_cnt;x++) {
+			_x = fb->height - 1 - ((ty*8)+y);
+			_y = x;
 
-            if(fb->u8g2_buf[(x/8) + (y*tile_cnt) ] & (1 << x%8))
-                BIT_CLEAR(fbp32[byte_index], bit_index);
+            byte_index = (_y * fb->height + _x) >> 3;
+            bit_index  = _x & 0x7;
+
+            if(fb->u8x8_buf[(x/8) + (y*tile_cnt) ] & (1 << x%8))
+                BIT_CLEAR(fbp[byte_index], bit_index);
             else
-                BIT_SET(fbp32[byte_index], bit_index);
+                BIT_SET(fbp[byte_index], bit_index);
         }
     }
 }
@@ -146,7 +150,7 @@ static void u8x8_DrawEpd_drvTiles(U8X8_UNUSED u8x8_t *u8x8, uint16_t tx, uint16_
 
 static uint8_t u8x8_framebuffer_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
-	u8g2_uint_t x, y, c, x_pos, y_pos;
+	u8g2_uint_t x, y, c;
 	uint8_t *ptr;
 	switch(msg)
 	{
@@ -161,23 +165,14 @@ static uint8_t u8x8_framebuffer_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
 	case U8X8_MSG_DISPLAY_SET_FLIP_MODE:
 		break;
 	case U8X8_MSG_DISPLAY_DRAW_TILE:
+		x = ((u8x8_tile_t *)arg_ptr)->x_pos;
+		y = ((u8x8_tile_t *)arg_ptr)->y_pos;
+		c = ((u8x8_tile_t *)arg_ptr)->cnt;
+		ptr = ((u8x8_tile_t *)arg_ptr)->tile_ptr;
 		do
 		{
-			c = ((u8x8_tile_t *)arg_ptr)->cnt;
-			ptr = ((u8x8_tile_t *)arg_ptr)->tile_ptr;
-			x_pos = ((u8x8_tile_t *)arg_ptr)->x_pos;
-			y_pos = ((u8x8_tile_t *)arg_ptr)->y_pos;
-
-			y = x_pos*8;
-			x = u8x8->display_info->pixel_height-8-y_pos*8;
-			for (uint16_t i = 0; i < c; i++) {
-				for (uint8_t j = 0; j < 8; j++) {
-					disp_flush(g_disp_dev, x, y, 8, 1, ptr);
-					//ESP_LOGI(TAG, "e x:%d y:%d color:%x\n", x, y, *ptr);
-					ptr+=1;
-					y+=1; 
-				}
-			}
+			u8x8_DrawEpd_drvTiles(u8x8, x, y, c, ptr);
+			x += c;
 			arg_int--;
 		} while( arg_int > 0 );
 		break;

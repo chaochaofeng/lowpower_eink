@@ -11,7 +11,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
-#include "driver/gpio.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -73,7 +72,7 @@ static void display_time(int hour, int min)
     sprintf(buf, "%d", hour);
     display_bg_char(20, 30, 5, 10, 8, montmedium_font_82x, buf, 2);
 
-    sprintf(buf, "%d", min);
+    sprintf(buf, "%02d", min);
     display_bg_char(20 + 118 + 20, 30, 5, 10, 8, montmedium_font_82x, buf, 2);
 }
 
@@ -97,7 +96,7 @@ void app_main(void)
 
     AHT20_Init();
 
-    u8g2_SetupEpd2in66drv(&u8g2, U8G2_R0);
+    u8g2_SetupEpd2in66drv(&u8g2, U8G2_R2);
 	u8x8_InitDisplay(u8g2_GetU8x8(&u8g2));
 	u8x8_SetPowerSave(u8g2_GetU8x8(&u8g2), 0);
     u8g2_ClearBuffer(&u8g2);

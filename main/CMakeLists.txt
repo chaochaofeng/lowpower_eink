@@ -22,5 +22,5 @@ set(include_dirs "."
 
 idf_component_register(SRCS "${srcs}" "${epdsrcs}" "${wificonsrcs}" "${sntptimesrcs}"
                        INCLUDE_DIRS "${include_dirs}"
-                       REQUIRES u8g2 esp_driver_gpio esp_driver_spi esp_hid esp_http_client esp-tls esp_http_server nvs_flash esp_adc
+                       REQUIRES u8g2 "driver" esp_hid esp_http_client esp-tls esp_http_server nvs_flash esp_adc
                        EMBED_FILES "web_ui_top.html" "web_ui_bottom.html")
