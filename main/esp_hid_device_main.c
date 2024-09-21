@@ -166,23 +166,28 @@ void app_main(void)
 	u8x8_SetPowerSave(u8g2_GetU8x8(&u8g2), 0);
     u8g2_ClearBuffer(&u8g2);
 
+    int delaytime;
     while (1) {
-        ret = xSemaphoreTake(sn_time.sem, portMAX_DELAY);
-        if (ret == pdTRUE) {
-            u8g2_ClearBuffer(&u8g2);
+        u8g2_ClearBuffer(&u8g2);
 
-            display_time(sn_time.hour, sn_time.min);
+        sntp_update_time();
+        battery_update_data();
+        aht20_update_data();
 
-            display_date(sn_time.mon, sn_time.day);
+        display_time(sn_time.hour, sn_time.min);
 
-            display_temp_hum(aht_data.temperature, aht_data.humidity);
+        display_date(sn_time.mon, sn_time.day);
 
-            display_battery(batteryinfo.voltage, batteryinfo.charging);
+        display_temp_hum(aht_data.temperature, aht_data.humidity);
 
-            u8g2_NextPage(&u8g2);
-        }
+        display_battery(batteryinfo.voltage, batteryinfo.charging);
 
-        vTaskDelay(200 / portTICK_PERIOD_MS);
+        u8g2_NextPage(&u8g2);
+
+        sntp_update_time();
+
+        delaytime = 60 - sn_time.sec;
+        vTaskDelay(delaytime * 1000 / portTICK_PERIOD_MS);
     }
 
     ESP_LOGI(TAG, "init done");

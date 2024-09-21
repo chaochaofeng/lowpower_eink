@@ -463,25 +463,16 @@ void  read_AHT20_once(uint8_t *temp, uint8_t *hum)
 }
 
 aht20_data aht_data;
+
+void aht20_update_data(void)
+{
+	read_AHT20_once(&aht_data.temperature, &aht_data.humidity);
+
+	aht_data.status = true;
+}
+
 static void aht20_read_task(void *pvParameters)
 {
-	uint8_t status;
-
-	memset(&aht_data, 0x00, sizeof(aht_data));
-
-    IIC_Init();
-	delay_ms(50);
-
-get_status:
-	status = aht20_get_status();
-	if ((status & 0x08) == 0) {
-		init_AHT20();
-		ESP_LOGI("aht20", "init_AHT20");
-		goto get_status;
-	}
-
-	delay_ms(10);
-
     while(1)
     {
         read_AHT20_once(&aht_data.temperature, &aht_data.humidity);
@@ -494,6 +485,27 @@ get_status:
 
 void AHT20_Init(void)
 {
-    xTaskCreate(aht20_read_task, "aht20_read_task", 8192, NULL, 4, NULL);
+	uint8_t status;
+
+	memset(&aht_data, 0x00, sizeof(aht_data));
+
+    IIC_Init();
+
+get_status:
+	status = aht20_get_status();
+	if ((status & 0x08) == 0) {
+		reset_AHT20();
+
+		delay_ms(10);
+
+		init_AHT20();
+		ESP_LOGI("aht20", "init_AHT20");
+		goto get_status;
+	}
+
+	delay_ms(10);
+
+	aht20_update_data();
+    // xTaskCreate(aht20_read_task, "aht20_read_task", 8192, NULL, 4, NULL);
 }
 

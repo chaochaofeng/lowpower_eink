@@ -113,11 +113,30 @@ static uint32_t get_battery_voltage(adc_oneshot_unit_handle_t adchandle, adc_cal
     return voltage[0][0];
 }
 
-static void battery_read_task(void *pvParameters)
+static bool do_calibration1_chan0 = 0;
+static adc_oneshot_unit_handle_t adc1_handle;
+static adc_cali_handle_t adc1_cali_chan0_handle = NULL;
+
+void battery_update_data(void)
 {
     int voltage = 0;
 
-    int cnt = read_inv + 1;
+    voltage = get_battery_voltage(adc1_handle, adc1_cali_chan0_handle, do_calibration1_chan0);
+
+    batteryinfo.voltage = (int)(0.33 * voltage - 600);
+
+    if (batteryinfo.voltage > 100)
+        batteryinfo.voltage = 100;
+    else if (batteryinfo.voltage < 0)
+        batteryinfo.voltage = 0;
+
+    batteryinfo.status = 1;
+}
+
+static void battery_read_task(void *pvParameters)
+{
+    bool last_charge = 0;
+
     bool battery_exist = 0;
 
     batteryinfo.voltage = 0;
@@ -126,7 +145,6 @@ static void battery_read_task(void *pvParameters)
     batteryinfo.battery_exist = 0;
 
     //-------------ADC1 Init---------------//
-    adc_oneshot_unit_handle_t adc1_handle;
     adc_oneshot_unit_init_cfg_t init_config1 = {
         .unit_id = ADC_UNIT_1,
     };
@@ -140,10 +158,11 @@ static void battery_read_task(void *pvParameters)
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC1_BATTERY_CHAN, &config));
 
     //-------------ADC1 Calibration Init---------------//
-    adc_cali_handle_t adc1_cali_chan0_handle = NULL;
-    bool do_calibration1_chan0 = example_adc_calibration_init(
+    do_calibration1_chan0 = example_adc_calibration_init(
         ADC_UNIT_1, ADC1_BATTERY_CHAN, ADC_BATTERY_ATTEN, &adc1_cali_chan0_handle);
  
+    battery_update_data();
+
     while (1) {
         if (rising_time > 5) {
             battery_exist = 0;
@@ -157,25 +176,14 @@ static void battery_read_task(void *pvParameters)
         rising_time = 0;
 
         if (battery_exist) {
-            if (cnt >= read_inv) {
-                cnt = 0;
-    
-                voltage = get_battery_voltage(adc1_handle, adc1_cali_chan0_handle, do_calibration1_chan0);
-
-                batteryinfo.voltage = (int)(0.33 * voltage - 600);
-
-                if (batteryinfo.voltage > 100)
-                    batteryinfo.voltage = 100;
-                else if (batteryinfo.voltage < 0)
-                    batteryinfo.voltage = 0;
-            }
-
             batteryinfo.charging = !gpio_get_level(BATTERY_CHANGE);
+            if (batteryinfo.charging != last_charge) {
+                last_charge = batteryinfo.charging;
 
-            cnt++;
+                batteryinfo.status = 1;
+            }
         }
 
-        batteryinfo.status = 1;
 
         vTaskDelay(pdMS_TO_TICKS(500));
     }
@@ -194,5 +202,5 @@ void battery_init(void)
     gpio_set_intr_type(BATTERY_CHANGE, GPIO_INTR_POSEDGE);
     gpio_isr_handler_add(BATTERY_CHANGE, battery_change_isr_handler, (void*) BATTERY_CHANGE);
 
-    xTaskCreate(battery_read_task, "battery_read_task", 8192, NULL, 4, NULL);
+    xTaskCreate(battery_read_task, "battery_read_task", 4096, NULL, 3, NULL);
 }

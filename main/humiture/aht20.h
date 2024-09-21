@@ -10,5 +10,6 @@ typedef struct {
 extern aht20_data aht_data;
 
 void AHT20_Init(void);
+void aht20_update_data(void);
 
 #endif

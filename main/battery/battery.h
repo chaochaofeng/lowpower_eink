@@ -14,4 +14,5 @@ typedef struct _battery_info {
 extern battery_info batteryinfo;
 
 void battery_init(void);
+void battery_update_data(void);
 #endif
