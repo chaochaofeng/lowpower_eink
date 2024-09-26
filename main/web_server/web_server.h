@@ -10,11 +10,7 @@ void esp_web_server_stop();
 httpd_handle_t start_webserver(void);
 void stop_webserver(httpd_handle_t server);
 int wifi_init_softsta(char *ssid, char *password);
-
-char *get_wifi_sta_ssid(void);
-char *get_wifi_sta_password(void);
-char *get_wifi_ap_ssid(void);
-char *get_wifi_ap_pass(void);
+int esp_web_server_state(void);
 
 #endif
 

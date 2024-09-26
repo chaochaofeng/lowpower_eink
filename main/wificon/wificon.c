@@ -41,8 +41,10 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG_AP, "Station "MACSTR" left, AID=%d",
                  MAC2STR(event->mac), event->aid);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        ret = esp_wifi_connect();
-        ESP_LOGI(TAG_STA, "Station started ret=%d", ret);
+        if (wificon.mode == WIFI_MODE_STA) {
+            ret = esp_wifi_connect();
+            ESP_LOGI(TAG_STA, "Station started ret=%d", ret);
+        }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         ESP_LOGI(TAG_STA, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -122,7 +124,7 @@ static int init_sta(const char *ssid, const char *passwd)
         memcpy(wifi_sta_config.sta.password, wifi->passwd, strlen(wifi->passwd));
     else
         wifi_sta_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
-    
+
     ESP_LOGI(TAG_STA, "will connect SSID:%s password:%s", wifi_sta_config.sta.ssid, wifi_sta_config.sta.password);
 
     esp_wifi_set_mode(WIFI_MODE_STA);
@@ -183,10 +185,10 @@ static int init_ap(const char *ssid, const char *passwd)
         memcpy(wifi_ap_config.ap.password, passwd, strlen(passwd));
     }
 
-    esp_wifi_set_mode(WIFI_MODE_AP);
+    esp_wifi_set_mode(WIFI_MODE_APSTA);
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_ap_config));
 
-    wifi->mode = WIFI_MODE_AP;
+    wifi->mode = WIFI_MODE_APSTA;
 
     ESP_ERROR_CHECK(esp_wifi_start());
 
@@ -202,7 +204,7 @@ static int scan(uint16_t *number, wifi_ap_record_t *ap_info)
 
     esp_wifi_scan_start(NULL, true);
 
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     esp_wifi_scan_get_ap_num(&ap_count);
     esp_wifi_scan_get_ap_records(number, ap_info);

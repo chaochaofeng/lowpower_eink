@@ -27,14 +27,18 @@
 #include "wificon.h"
 #include "u8g2.h"
 #include "u8g2_d_epd2in66.h"
+#include "key.h"
+#include "core/inc/base.h"
+#include "screen/screen.h"
 
 static const char *TAG = "app_main";
 
-u8g2_t u8g2;
+//static u8g2_t u8g2;
 
 extern const uint8_t montmedium_font_82x[] U8G2_FONT_SECTION("montmedium_font_82x");
 extern const uint8_t myicon_font24[] U8G2_FONT_SECTION("myicon_font24");
 
+#if 0
 static void display_bg_char(int x, int y, int inv_x, int inv_y, int r,
                             const uint8_t *font, char *str, int char_num_max)
 {
@@ -61,7 +65,6 @@ static void display_bg_char(int x, int y, int inv_x, int inv_y, int r,
 
     u8g2_DrawUTF8(&u8g2, str_x, str_y, str);
 }
-
 
 static void display_time(int hour, int min)
 {
@@ -144,6 +147,7 @@ static void display_battery(int voltage, int charge)
 
     u8g2_DrawGlyph(&u8g2, start_x - cnt * inv_x, 26, 19);
 }
+#endif
 
 void app_main(void)
 {
@@ -155,36 +159,44 @@ void app_main(void)
       ret = nvs_flash_init();
     }
 
-    sntp_Init();
+    //sntp_Init();
 
     battery_init();
 
     AHT20_Init();
+    key_init();
 
-    u8g2_SetupEpd2in66drv(&u8g2, U8G2_R2);
-	u8x8_InitDisplay(u8g2_GetU8x8(&u8g2));
-	u8x8_SetPowerSave(u8g2_GetU8x8(&u8g2), 0);
-    u8g2_ClearBuffer(&u8g2);
+    u8g2_SetupEpd2in66drv(get_u8g2(), U8G2_R2);
+	u8x8_InitDisplay(u8g2_GetU8x8(get_u8g2()));
+	u8x8_SetPowerSave(u8g2_GetU8x8(get_u8g2()), 0);
+    u8g2_ClearBuffer(get_u8g2());
+    ug_mainScreen_init();
 
+    ug_base_flush(mainScreen);
+
+    u8g2_NextPage(get_u8g2());
     int delaytime;
     while (1) {
-        u8g2_ClearBuffer(&u8g2);
+        
+        // u8g2_ClearBuffer(&u8g2);
 
-        sntp_update_time();
-        battery_update_data();
-        aht20_update_data();
+        // sntp_update_time();
+        // battery_update_data();
+        // aht20_update_data();
 
-        display_time(sn_time.hour, sn_time.min);
+        // display_time(sn_time.hour, sn_time.min);
 
-        display_date(sn_time.mon, sn_time.day);
+        // display_date(sn_time.mon, sn_time.day);
 
-        display_temp_hum(aht_data.temperature, aht_data.humidity);
+        // display_temp_hum(aht_data.temperature, aht_data.humidity);
 
-        display_battery(batteryinfo.voltage, batteryinfo.charging);
+        // display_battery(batteryinfo.voltage, batteryinfo.charging);
 
-        u8g2_NextPage(&u8g2);
+        //ug_base_flush(mainScreen);
 
-        sntp_update_time();
+        //u8g2_NextPage(get_u8g2());
+
+        //sntp_update_time();
 
         delaytime = 60 - sn_time.sec;
         vTaskDelay(delaytime * 1000 / portTICK_PERIOD_MS);
