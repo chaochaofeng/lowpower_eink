@@ -9,7 +9,7 @@ typedef struct {
     uint8_t mon;
     uint16_t year;
     uint8_t wday;
-    SemaphoreHandle_t sem;
+    bool cal;
     bool status;
 } sntp_time;
 
@@ -18,5 +18,5 @@ extern sntp_time sn_time;
 void sntp_Init(void);
 
 void sntp_update_time(void);
-void sntp_cali_time(void);
+int sntp_cali_time(void);
 #endif

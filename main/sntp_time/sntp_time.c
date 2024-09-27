@@ -20,7 +20,7 @@ static void time_sync_notification_cb(struct timeval *tv)
     ESP_LOGI(TAG, "cal time success");
 }
 
-static void sntp_time_cal_start(void)
+static int sntp_time_cal_start(void)
 {
     int ret;
     int retry = 0;
@@ -51,6 +51,15 @@ static void sntp_time_cal_start(void)
 
         wificon.deinit();
     }
+
+    if (ret != ESP_OK || retry >= retry_count) {
+        ESP_LOGE(TAG, "Failed to get time");
+        sn_time.cal = 1;
+    } else {
+        sn_time.cal = 0;
+    }
+
+    return sn_time.cal;
 }
 
 static void sntp_time_cal_stop(void)
@@ -60,11 +69,14 @@ static void sntp_time_cal_stop(void)
     wificon.deinit();
 }
 
-void sntp_cali_time(void)
+int sntp_cali_time(void)
 {
-    sntp_time_cal_start();
+    int ret = 0;
+    ret = sntp_time_cal_start();
 
     sntp_time_cal_stop();
+
+    return ret;
 }
 
 void sntp_update_time(void)
@@ -88,48 +100,15 @@ void sntp_update_time(void)
     sn_time.wday = timeinfo.tm_wday;
     sn_time.sec = timeinfo.tm_sec;
 
-    if (sn_time.min == 0 && first_time == true) {
-        sntp_cali_time();
-
+    if ((sn_time.min == 0 || sn_time.cal) && first_time) {
         first_time = false;
+
+        sntp_cali_time();
         sntp_update_time();
     }
 
     first_time = true;
     sn_time.status = 1;
-}
-
-static void sntp_update_task(void *pvParameters)
-{
-    time_t now = 0;
-    struct tm timeinfo;
-    char strftime_buf[64];
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-
-    if (timeinfo.tm_year < (2016 - 1900) || timeinfo.tm_min == 0) {
-        ESP_LOGI(TAG, "System time is not set yet. Connecting to WiFi and getting time over NTP.");
-        sntp_time_cal_start();
-
-        sntp_time_cal_stop();
-    }
-
-    // Set timezone to China Standard Time
-    setenv("TZ", "CST-8", 1);
-    tzset();
-
-    int delaytime = 0;
-    while (1) {
-        sntp_update_time();
-
-        //xSemaphoreGive(disp_update_sem);
-
-        delaytime = 60 - sn_time.sec;
-
-        vTaskDelay(delaytime * 1000 / portTICK_PERIOD_MS);
-    }
 }
 
 void sntp_Init(void)

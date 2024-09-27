@@ -2,6 +2,7 @@
 
 #include "screen/screen.h"
 #include "web_server.h"
+#include "sntp_time.h"
 
 #define TAG "screen"
 
@@ -95,6 +96,35 @@ static void webserver_task(void* arg)
     }
 }
 
+static void cali_time_task(void* arg)
+{
+    int ret;
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    ret = sntp_cali_time();
+
+    if (menuSettingScreenconfig->selected == true) {
+        u8g2_ClearBuffer(get_u8g2());
+        u8g2_SetDrawColor(get_u8g2(), 1);
+        u8g2_SetFont(get_u8g2(), u8g2_font_logisoso24_tf);
+        if (ret)
+            u8g2_DrawUTF8(get_u8g2(), 10, 90, "cali time failed");
+        else
+            u8g2_DrawUTF8(get_u8g2(), 10, 90, "cali time success");
+
+        ug_base_flush(ui_menu_setting);
+        u8g2_NextPage(get_u8g2());
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+        ug_input_proc(UG_KEY_ENTER);
+
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+
+    vTaskDelete(NULL);
+}
+
 static int menuWifi_event_cb(struct ug_base_st *base, int event)
 {
 
@@ -182,6 +212,8 @@ static int menuSetting_event_cb(struct ug_base_st *base, int event)
             u8g2_SetDrawColor(get_u8g2(), 1);
             u8g2_SetFont(get_u8g2(), u8g2_font_logisoso24_tf);
             u8g2_DrawUTF8(get_u8g2(), 40, 90, "calibrate time ...");
+
+            xTaskCreate(cali_time_task, "cali_time_task", 4096, NULL, 5, NULL);
 
             ug_base_enable_visible(menuSettingBack, false);
         } else {
