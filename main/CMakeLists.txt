@@ -1,6 +1,6 @@
 set(srcs "esp_hid_device_main.c"
          #"esp_hid_gap.c"
-         #"storage/app_storage.c"
+         "storage/app_storage.c"
          "web_server/web_server.c"
          "battery/battery.c"
          "humiture/aht20.c"

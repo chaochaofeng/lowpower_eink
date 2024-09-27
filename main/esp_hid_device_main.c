@@ -11,20 +11,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
-#include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
+
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_err.h"
-
+#include "esp_sleep.h"
+#include "driver/rtc_io.h"
 #include "app_storage.h"
 #include "web_server.h"
 #include "battery.h"
 #include "aht20.h"
-#include "disp_drv.h"
 #include "sntp_time.h"
-#include "wificon.h"
 #include "u8g2.h"
 #include "u8g2_d_epd2in66.h"
 #include "key.h"
@@ -33,125 +30,45 @@
 
 static const char *TAG = "app_main";
 
-//static u8g2_t u8g2;
-
-extern const uint8_t montmedium_font_82x[] U8G2_FONT_SECTION("montmedium_font_82x");
-extern const uint8_t myicon_font24[] U8G2_FONT_SECTION("myicon_font24");
-
-#if 0
-static void display_bg_char(int x, int y, int inv_x, int inv_y, int r,
-                            const uint8_t *font, char *str, int char_num_max)
+void deep_sleep_register_gpio_wakeup(void)
 {
-    int box_x = x, box_y = y, box_w, box_h;
-    int str_x, str_y;
-    int char_w;
+    const gpio_config_t config = {
+        .pin_bit_mask = BIT(GPIO_NUM_1),
+        .mode = GPIO_MODE_INPUT,
+    };
 
-    u8g2_SetFontMode(&u8g2, 0);
-    u8g2_SetDrawColor(&u8g2, 1);
-	u8g2_SetFont(&u8g2, font);
+    ESP_ERROR_CHECK(gpio_config(&config));
+    ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(BIT(GPIO_NUM_1), ESP_GPIO_WAKEUP_GPIO_LOW));
 
-    box_w = u8g2_GetMaxCharWidth(&u8g2) * char_num_max + inv_x * 2;
-    box_h = u8g2_GetMaxCharHeight(&u8g2) + inv_y * 2;
-
-	u8g2_DrawRBox(&u8g2, box_x, box_y, box_w, box_h, r);
-
-    u8g2_SetFontMode(&u8g2, 1);
-    u8g2_SetDrawColor(&u8g2, 0);
-
-    char_w = u8g2_GetStrWidth(&u8g2, str);
-
-    str_x = box_x + (box_w - char_w) / 2;
-    str_y = box_y + inv_y + u8g2_GetAscent(&u8g2);
-
-    u8g2_DrawUTF8(&u8g2, str_x, str_y, str);
+    printf("Enabling GPIO wakeup on pins GPIO%d\n", GPIO_NUM_1);
 }
 
-static void display_time(int hour, int min)
+static void deep_sleep_rtc_timer_wakeup(int sec)
 {
-    char buf[3];
-
-    sprintf(buf, "%d", hour);
-    display_bg_char(20, 30, 5, 10, 8, montmedium_font_82x, buf, 2);
-
-    sprintf(buf, "%02d", min);
-    display_bg_char(20 + 118 + 20, 30, 5, 10, 8, montmedium_font_82x, buf, 2);
+    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(sec * 1000000));
 }
 
-static void display_temp_hum(int temp, int humi)
+static void entry_deep_sleep(int sec)
 {
-    char buf[6];
-    memset(buf, 0, sizeof(buf));
+    deep_sleep_rtc_timer_wakeup(sec);
+    deep_sleep_register_gpio_wakeup();
 
-    u8g2_SetFontMode(&u8g2, 0);
-    u8g2_SetDrawColor(&u8g2, 1);
-
-    sprintf(buf, "%d\xc2\xb0""C", temp);
-
-    u8g2_SetFont(&u8g2, u8g2_font_logisoso24_tf);
-    u8g2_DrawUTF8(&u8g2, 15, 145, buf);
-
-    memset(buf, 0, sizeof(buf));
-    sprintf(buf, "%d", humi);
-
-    u8g2_DrawUTF8(&u8g2, 110, 145, buf);
-
-    u8g2_SetFont(&u8g2, myicon_font24);
-    u8g2_DrawGlyph(&u8g2, 78, 150, 17);
+    esp_deep_sleep_start();
 }
 
-static void display_date(int mon, int day)
+void u8g2_init_epd2in66drv(void)
 {
-    char buf[6];
-
-    u8g2_SetFontMode(&u8g2, 0);
-    u8g2_SetDrawColor(&u8g2, 1);
-
-    sprintf(buf, "%02d-%02d", mon, day);
-
-    u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
-    u8g2_DrawUTF8(&u8g2, 180, 145, buf);
+    u8g2_SetupEpd2in66drv(get_u8g2(), U8G2_R2);
+	u8x8_InitDisplay(u8g2_GetU8x8(get_u8g2()));
+	u8x8_SetPowerSave(u8g2_GetU8x8(get_u8g2()), 0);
+    u8g2_ClearBuffer(get_u8g2());
 }
-
-static void display_battery(int voltage, int charge)
-{
-    int encoder = 10;
-    int start_x = 277;
-    int inv_x   = 24;
-    int cnt = 0;
-
-    u8g2_SetFontMode(&u8g2, 0);
-    u8g2_SetDrawColor(&u8g2, 1);
-
-    u8g2_SetFont(&u8g2, myicon_font24);
-
-    if (charge)
-        u8g2_DrawGlyph(&u8g2, 277, 26, 16);
-
-    cnt++;
-
-    if (voltage < 20)
-        encoder += 0;
-    else if (voltage < 35)
-        encoder += 1;
-    else if (voltage < 55)
-        encoder += 2;
-    else if (voltage < 70)
-        encoder += 3;
-    else if (voltage < 85)
-        encoder += 4;
-    else
-        encoder += 5;
-
-    u8g2_DrawGlyph(&u8g2, start_x - cnt * inv_x + 6, 26, encoder);
-    cnt++;
-
-    u8g2_DrawGlyph(&u8g2, start_x - cnt * inv_x, 26, 19);
-}
-#endif
 
 void app_main(void)
 {
     esp_err_t ret = 0;
+    int wakeup_inv = 0;
+    int delaytime = 0;
 
 	ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -159,44 +76,49 @@ void app_main(void)
       ret = nvs_flash_init();
     }
 
-    //sntp_Init();
+    u8g2_init_epd2in66drv();
+    ug_mainScreen_init();
+    ug_base_flush(mainScreen);
+
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_GPIO) {
+        ESP_LOGI(TAG, "GPIO wakeup");
+        ug_input_proc(UG_KEY_ENTER);
+    }
 
     battery_init();
-
     AHT20_Init();
     key_init();
 
-    u8g2_SetupEpd2in66drv(get_u8g2(), U8G2_R2);
-	u8x8_InitDisplay(u8g2_GetU8x8(get_u8g2()));
-	u8x8_SetPowerSave(u8g2_GetU8x8(get_u8g2()), 0);
-    u8g2_ClearBuffer(get_u8g2());
-    ug_mainScreen_init();
-
-    ug_base_flush(mainScreen);
-
-    u8g2_NextPage(get_u8g2());
-    int delaytime;
     while (1) {
-        
-        // u8g2_ClearBuffer(&u8g2);
+        sntp_Init();
+        battery_update_data();
+        aht20_update_data();
 
-        // sntp_update_time();
-        // battery_update_data();
-        // aht20_update_data();
+        ug_base_set_context_fmt(ui_hour, "%d", sn_time.hour);
+        ug_base_set_context_fmt(ui_min, "%02d", sn_time.min);
+        ug_base_set_context_fmt(ui_date, "%02d-%02d", sn_time.mon, sn_time.day);
 
-        // display_time(sn_time.hour, sn_time.min);
+        ug_base_set_context_fmt(ui_temp, "%d\xc2\xb0""C", aht_data.temperature);
+        ug_base_set_context_fmt(ui_humi, "%d", aht_data.humidity);
 
-        // display_date(sn_time.mon, sn_time.day);
+        if (ug_get_curscreen() == mainScreen) {
+            u8g2_ClearBuffer(get_u8g2());
 
-        // display_temp_hum(aht_data.temperature, aht_data.humidity);
+            ug_base_flush(mainScreen);
 
-        // display_battery(batteryinfo.voltage, batteryinfo.charging);
+            u8g2_NextPage(get_u8g2());
+            
+            sntp_update_time();
 
-        //ug_base_flush(mainScreen);
+            if (sn_time.hour >= 23 || sn_time.hour < 6) {
+                wakeup_inv = 5 * 60;    //5min wakeup
+            } else {
+                wakeup_inv = 1 * 60;    //1min wakeup
+            }
 
-        //u8g2_NextPage(get_u8g2());
-
-        //sntp_update_time();
+            delaytime = wakeup_inv - sn_time.sec;
+            entry_deep_sleep(delaytime);
+        }
 
         delaytime = 60 - sn_time.sec;
         vTaskDelay(delaytime * 1000 / portTICK_PERIOD_MS);

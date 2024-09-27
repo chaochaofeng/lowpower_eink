@@ -58,9 +58,7 @@ static void webserver_task(void* arg)
 
     while (1) {
         ret = esp_web_server_state();
-        if (ret == 0x4) {
-            ESP_LOGI(TAG, "webserver_task: 0x4");
-
+        if (ret == 0) {
             u8g2_ClearBuffer(get_u8g2());
             u8g2_SetDrawColor(get_u8g2(), 1);
             u8g2_SetFont(get_u8g2(), u8g2_font_logisoso24_tf);
@@ -76,7 +74,7 @@ static void webserver_task(void* arg)
 
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             vTaskDelete(NULL);
-        } else if (ret == 0x8) {
+        } else {
             ESP_LOGI(TAG, "webserver_task: 0x8");
             u8g2_ClearBuffer(get_u8g2());
             u8g2_SetDrawColor(get_u8g2(), 1);
@@ -94,8 +92,6 @@ static void webserver_task(void* arg)
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             vTaskDelete(NULL);
         }
-
-        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 }
 
@@ -292,6 +288,7 @@ static void status_bar_init(void)
     ug_base_set_context_type(ui_battery_charge, TYPE_GLYPH);
     ug_base_set_glph_encoder(ui_battery_charge, 16);
     ug_base_set_pos(ui_battery_charge, start_x, 26);
+    ug_base_enable_visible(ui_battery_charge, false);
 
     cnt++;
     ui_battery = create_base(mainScreen, UG_TYPE_ITEM);

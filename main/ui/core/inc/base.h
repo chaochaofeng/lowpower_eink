@@ -73,6 +73,7 @@ u8g2_t *get_u8g2(void);
 ug_base *create_base(ug_base *parent, int type);
 void destory_base(ug_base *item);
 void ug_set_curscreen(ug_base *screen);
+ug_base * ug_get_curscreen(void);
 void ug_base_set_context(ug_base *base, const char *context);
 void ug_base_set_context_type(ug_base *base, int type);
 void ug_base_set_glph_encoder(ug_base *base, int encoder);

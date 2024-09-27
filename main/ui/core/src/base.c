@@ -286,6 +286,10 @@ void ug_set_curscreen(ug_base *screen)
     display_cur = screen;
 }
 
+ug_base * ug_get_curscreen(void)
+{
+    return display_cur;
+}
 
 void ug_draw_outline(ug_base *base)
 {
@@ -385,8 +389,6 @@ void ug_input_proc(int key)
             }
 
         } else if (key == UG_KEY_ENTER) {
-            UG_LOG("focus:%p type:%d\n", focus_cur, focus_cur->type);
-
             if (focus_cur && focus_cur->type == UG_TYPE_MENU) {
                 if (focus_cur->cb) {
                     focus_cur->cb(focus_cur, UG_KEY_ENTER);
@@ -405,7 +407,6 @@ void ug_input_proc(int key)
                 focus_cur->selected = !focus_cur->selected;
 
                 if (focus_cur->cb) {
-                    UG_LOG("focus:%p cb\n", focus_cur);
                     focus_cur->cb(focus_cur, UG_KEY_ENTER);
                 }
 

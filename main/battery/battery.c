@@ -8,6 +8,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 
 #include "battery.h"
+#include "screen/screen.h"
 
 #define 	BATTERY_CHANGE	    3
 #define 	ADC_BATTERY_EN		13
@@ -21,7 +22,6 @@ static int voltage[2][10];
 
 static const char *TAG = "ADC SINGLE";
 static uint32_t rising_time 	= 0;
-static int  read_inv = 100;
 
 battery_info batteryinfo = {0};
 
@@ -34,7 +34,7 @@ static gpio_config_t init_output_io(gpio_num_t num)
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1ULL << num);
     io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 0;
+    io_conf.pull_up_en = 1;
     return io_conf;
 }
 
@@ -120,6 +120,7 @@ static adc_cali_handle_t adc1_cali_chan0_handle = NULL;
 void battery_update_data(void)
 {
     int voltage = 0;
+    int encoder = 10;
 
     voltage = get_battery_voltage(adc1_handle, adc1_cali_chan0_handle, do_calibration1_chan0);
 
@@ -131,6 +132,24 @@ void battery_update_data(void)
         batteryinfo.voltage = 0;
 
     batteryinfo.status = 1;
+
+    if (batteryinfo.voltage < 20)
+        encoder += 0;
+    else if (batteryinfo.voltage < 35)
+        encoder += 1;
+    else if (batteryinfo.voltage < 55)
+        encoder += 2;
+    else if (batteryinfo.voltage < 70)
+        encoder += 3;
+    else if (batteryinfo.voltage < 85)
+        encoder += 4;
+    else
+        encoder += 5;
+
+    if (!batteryinfo.battery_exist)
+        encoder = 10;
+
+    ug_base_set_glph_encoder(ui_battery, encoder);
 }
 
 static void battery_read_task(void *pvParameters)
@@ -173,8 +192,6 @@ static void battery_read_task(void *pvParameters)
             batteryinfo.battery_exist = 1;
         }
 
-        rising_time = 0;
-
         if (battery_exist) {
             batteryinfo.charging = !gpio_get_level(BATTERY_CHANGE);
             if (batteryinfo.charging != last_charge) {
@@ -184,8 +201,8 @@ static void battery_read_task(void *pvParameters)
             }
         }
 
-
-        vTaskDelay(pdMS_TO_TICKS(500));
+        rising_time = 0;
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

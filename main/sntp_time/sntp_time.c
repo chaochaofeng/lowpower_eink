@@ -7,6 +7,7 @@
 
 #include "wificon.h"
 #include "sntp_time.h"
+#include "app_storage.h"
 
 #define TAG "sntp_time"
 
@@ -25,7 +26,16 @@ static void sntp_time_cal_start(void)
     int retry = 0;
     const int retry_count = 15;
 
-    ret = wificon.init_sta(CONFIG_WIFICON_REMOTE_AP_SSID, CONFIG_WIFICON_REMOTE_AP_PASSWD);//CONFIG_WIFICON_REMOTE_AP_SSID, CONFIG_WIFICON_REMOTE_AP_PASSWD);
+    char ssid[64];
+    char password[64];
+
+    ret = wifi_info_get(ssid, password);
+    if (ret != ESP_OK) {
+        memcpy(ssid, CONFIG_WIFICON_REMOTE_AP_SSID, sizeof(CONFIG_WIFICON_REMOTE_AP_SSID));
+        memcpy(password, CONFIG_WIFICON_REMOTE_AP_PASSWD, sizeof(CONFIG_WIFICON_REMOTE_AP_PASSWD));
+    }
+
+    ret = wificon.init_sta(ssid, password);//CONFIG_WIFICON_REMOTE_AP_SSID, CONFIG_WIFICON_REMOTE_AP_PASSWD);
     if (ret == ESP_OK) {
         if (wificon.is_connected) {
             esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(SNTP_SERVER);
@@ -62,6 +72,7 @@ void sntp_update_time(void)
     time_t now = 0;
     struct tm timeinfo;
     char strftime_buf[64];
+    static bool first_time = true;
 
     time(&now);
     localtime_r(&now, &timeinfo);
@@ -77,10 +88,14 @@ void sntp_update_time(void)
     sn_time.wday = timeinfo.tm_wday;
     sn_time.sec = timeinfo.tm_sec;
 
-    if (sn_time.min == 0) {
+    if (sn_time.min == 0 && first_time == true) {
         sntp_cali_time();
+
+        first_time = false;
+        sntp_update_time();
     }
 
+    first_time = true;
     sn_time.status = 1;
 }
 

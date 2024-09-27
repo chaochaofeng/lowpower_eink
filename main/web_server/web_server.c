@@ -31,12 +31,11 @@ static char sta_pass[32] = {0};
 static httpd_handle_t g_http_handle;
 
 static EventGroupHandle_t wifi_event_group;
-static int g_flag = 0;
 
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-#define WIFI_CONFIG_SUCCESS_BIT      BIT2
-#define WIFI_CONFIG_FAIL_BIT      BIT3
+#define WIFI_CONNECTED_BIT              BIT0
+#define WIFI_FAIL_BIT                   BIT1
+#define WIFI_CONFIG_SUCCESS_BIT         BIT2
+#define WIFI_CONFIG_FAIL_BIT            BIT3
 
 void stop_webserver(httpd_handle_t server);
 
@@ -265,10 +264,9 @@ static esp_err_t echo_post_handler(httpd_req_t *req)
 	}
 
     if (flag) {
-        //wifi_info_set(sta_ssid, sta_pass);
-        g_flag = WIFI_CONFIG_SUCCESS_BIT;
+        xEventGroupSetBits(wifi_event_group, WIFI_CONFIG_SUCCESS_BIT);
     } else {
-        g_flag = WIFI_CONFIG_FAIL_BIT;
+        xEventGroupSetBits(wifi_event_group, WIFI_CONFIG_FAIL_BIT);
     }
 
     return ESP_OK;
@@ -385,7 +383,18 @@ void stop_webserver(httpd_handle_t server)
 
 int esp_web_server_state(void)
 {
-    return g_flag;
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
+        WIFI_CONFIG_SUCCESS_BIT | WIFI_CONFIG_FAIL_BIT,
+        pdFALSE,
+        pdFALSE,
+        portMAX_DELAY);
+
+    if (bits & WIFI_CONFIG_SUCCESS_BIT) {
+        wifi_info_set(sta_ssid, sta_pass);
+        return 0;
+    }
+
+    return -1;
 }
 
 void esp_web_server_stop()
@@ -399,6 +408,8 @@ void esp_web_server_stop()
 int esp_web_server_init()
 {
     wificon.init_ap("clock_ap", "");
+
+    wifi_event_group = xEventGroupCreate();
 
 	g_http_handle = start_webserver();
 
