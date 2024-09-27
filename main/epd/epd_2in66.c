@@ -421,7 +421,7 @@ static int epaper_2in66_init(struct disp_dev_st *dev)
 	memset(drv->priv_data[EPD_BLACK], 0xff, dev->width * dev->height / 8);
 	memset(drv->priv_data[EPD_RED], 0xff, dev->width * dev->height / 8);
 
-	epd_2in66_dev_init(dev->width, dev->height);
+	//epd_2in66_dev_init(dev->width, dev->height);
 
 	//epd_2in66_clear(dev->width, dev->height);
 
