@@ -6,12 +6,14 @@
 
 #define TAG "screen"
 
+extern const uint8_t u8g2_font_wqy16_t_chinese1[] U8G2_FONT_SECTION("u8g2_font_wqy16_t_chinese1");
 extern const uint8_t montmedium_font_82x[] U8G2_FONT_SECTION("montmedium_font_82x");
 extern const uint8_t battery_font24[] U8G2_FONT_SECTION("battery_font24");
 extern const uint8_t myicon_font24[] U8G2_FONT_SECTION("myicon_font24");
 extern const uint8_t wifi_font24[] U8G2_FONT_SECTION("wifi_font24");
 extern const uint8_t wifi_font64[] U8G2_FONT_SECTION("wifi_font64");
 extern const uint8_t menu_font64[] U8G2_FONT_SECTION("menu_font64");
+extern const uint8_t scrum_16x[] U8G2_FONT_SECTION("scrum_16x");
 
 ug_base *mainScreen;
 ug_base *ui_hour;
@@ -23,6 +25,7 @@ ug_base *ui_humi_png;
 ug_base *ui_battery_charge;
 ug_base *ui_battery;
 ug_base *ui_wifi;
+ug_base *ui_label;
 ug_base *ui_trigger;
 
 ug_base *ui_menu_wifi;
@@ -335,6 +338,12 @@ static void status_bar_init(void)
     ug_base_set_glph_encoder(ui_wifi, 10);
     ug_base_set_context_type(ui_wifi, TYPE_GLYPH);
     ug_base_set_pos(ui_wifi, start_x - cnt * inv_x, 26);
+
+    ui_label = create_base(mainScreen, UG_TYPE_ITEM);
+    ug_base_set_font(ui_label, u8g2_font_wqy16_t_chinese1);
+    ug_base_set_context(ui_label, " 天天开心 ");
+    ug_base_set_pos(ui_label, 5, 22);
+    ug_base_set_context_type(ui_label, TYPE_TEXT);
 }
 
 
